@@ -10,8 +10,7 @@ ADMIN_WALLETS = "EgG34ZjyE3jvnc5BwaB8pVE7rSBXGJLADstGxhe2dhya"
 [[d1_databases]]
 binding = "DB"
 database_name = "latiumx"
-# Replace with the id printed by `npx wrangler d1 create latiumx`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "2e651e04-cd6b-4e74-96a9-b664fd15baf8"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
