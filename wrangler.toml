@@ -5,7 +5,7 @@ compatibility_date = "2024-11-01"
 
 [vars]
 # Comma-separated wallets that can use the admin page. Set your own wallet here or in the Pages dashboard.
-ADMIN_WALLETS = ""
+ADMIN_WALLETS = "EgG34ZjyE3jvnc5BwaB8pVE7rSBXGJLADstGxhe2dhya"
 
 [[d1_databases]]
 binding = "DB"
