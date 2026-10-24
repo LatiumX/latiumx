@@ -1,0 +1,16 @@
+[toolchain]
+package_manager = "npm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+latiumx_escrow = "G48Xix7oG6FL7hMArJgGyc5qtvjn3BX5BF21x3LYqGbN"
+
+[programs.devnet]
+latiumx_escrow = "G48Xix7oG6FL7hMArJgGyc5qtvjn3BX5BF21x3LYqGbN"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"

@@ -1,0 +1,39 @@
+[package]
+name = "latiumx-escrow"
+version = "0.1.0"
+description = "LatiumX Freelancing escrow: holds SPL token payments between a client and a freelancer"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "latiumx_escrow"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = { version = "=1.2.1", features = ["init-if-needed"] }
+anchor-spl = { version = "=1.2.1", features = ["token", "token_2022", "associated_token"] }
+
+[dev-dependencies]
+litesvm = "=0.18.1"
+litesvm-token = { version = "=0.18.1", features = ["token-2022"] }
+solana-keypair = "3"
+solana-signer = "3"
+solana-transaction = "4"
+solana-message = "4"
+solana-loader-v3-interface = { version = "8", features = ["serde"] }
+solana-program-pack = "3"
+spl-token-interface = "3"
+spl-associated-token-account-interface = "2"
+bincode = "1"
+solana-system-interface = { version = "3", features = ["bincode"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("anchor-debug", "custom-heap", "custom-panic"))', 'cfg(target_os, values("solana"))'] }
