@@ -1,0 +1,19 @@
+# Cloudflare Pages project config. Pages reads this file when the project is connected to Git.
+name = "latiumx"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Comma-separated wallets that can use the admin page. Set your own wallet here or in the Pages dashboard.
+ADMIN_WALLETS = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "latiumx"
+# Replace with the id printed by `npx wrangler d1 create latiumx`.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "latiumx-images"

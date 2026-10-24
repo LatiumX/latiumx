@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LatiumX Litepaper</title>
+<meta name="description" content="LatiumX litepaper: an escrow-based task board on Solana and the LTMX token. Independent project inspired by Latium.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root { --paper:#f2f4f3; --sheet:#fff; --ink:#14211f; --ink-soft:#4d5c59; --rule:#d3dbd8; --escrow:#0d6e64; --stamp:#b5651d; --stamp-tint:#f6e6d6;
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif; --f-body:"IBM Plex Sans","Segoe UI",Roboto,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper:#0f1716; --sheet:#16211f; --ink:#e6eeec; --ink-soft:#9fb0ac; --rule:#2a3936; --escrow:#4cc1b2; --stamp:#e39a57; --stamp-tint:#3a2a1b; color-scheme:dark; } }
+:root[data-theme="dark"] { --paper:#0f1716; --sheet:#16211f; --ink:#e6eeec; --ink-soft:#9fb0ac; --rule:#2a3936; --escrow:#4cc1b2; --stamp:#e39a57; --stamp-tint:#3a2a1b; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:400 1.0625rem/1.65 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); }
+nav { max-width:720px; margin:0 auto; padding-block:20px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+nav a { color:var(--ink); font:600 1rem/1 var(--f-display); text-decoration:none; }
+nav a.back { font:500 .85rem/1 var(--f-mono); color:var(--escrow); }
+main { max-width:720px; margin:0 auto; padding-block:16px 64px; }
+h1,h2,h3 { font-family:var(--f-display); line-height:1.15; text-wrap:balance; }
+h1 { font-size:clamp(2.2rem,5vw,3.2rem); margin:.2em 0 .3em; }
+h2 { font-size:1.6rem; margin:2.2em 0 .6em; padding-top:1em; border-top:1px solid var(--rule); }
+h3 { font-size:1.15rem; margin:1.6em 0 .4em; }
+a { color:var(--escrow); }
+blockquote { margin:1.5em 0; padding:16px 20px; background:var(--stamp-tint); border:1px solid var(--stamp); border-radius:8px; }
+blockquote p { margin:0; }
+table { width:100%; border-collapse:collapse; font-size:.95rem; display:block; overflow-x:auto; }
+th,td { padding:10px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+th { font:500 .78rem/1.3 var(--f-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+td:nth-child(2), td:nth-child(3) { font-variant-numeric:tabular-nums; }
+li { margin:.3em 0; }
+footer { max-width:720px; margin:0 auto; border-top:1px solid var(--rule); padding-block:24px 40px; font-size:.85rem; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+<nav><a href="index.html">LatiumX</a><a class="back" href="index.html">← latiumx.org</a></nav>
+<main>
+<h1 id="latiumx-litepaper">LatiumX Litepaper</h1>
+<p><strong>Version 0.2 · October 2026 · Draft for community
+review</strong></p>
+<blockquote>
+<p><strong>Not affiliated with Latium.</strong> LatiumX is a new,
+independent project inspired by the idea behind Latium, a crypto-paid
+task marketplace launched in 2017–2018. It is not run, endorsed or
+supported by the original Latium team. LTMX is a new token and is not
+LATX. No LATX balances, accounts or obligations carry over.</p>
+</blockquote>
+<h2 id="summary">1. Summary</h2>
+<p>LatiumX is a task and bounty board on Solana. Someone who needs a
+small piece of work done posts it and locks the payment in an escrow
+contract. A worker claims the task, delivers it, and is paid from escrow
+when the poster approves. If the poster stops responding, the worker can
+release the payment after a review window. If the two disagree, a
+reviewer settles it.</p>
+<p>Tasks are priced and paid in LTMX, a fixed-supply Solana token
+launched on pump.fun.</p>
+<h2 id="the-problem">2. The problem</h2>
+<p>Paying a stranger for a two-hour job is harder than it should be.</p>
+<ul>
+<li><strong>Trust runs one way.</strong> Workers usually deliver first
+and hope to be paid. Posters often pay first and hope the work
+arrives.</li>
+<li><strong>Fees and delays.</strong> Large freelance platforms take a
+significant cut and hold funds for days.</li>
+<li><strong>Reach.</strong> Many skilled people live where common payout
+rails do not work, or where receiving a cross-border payment is slow and
+expensive.</li>
+<li><strong>Opaque disputes.</strong> When something goes wrong, the
+decision happens inside a support queue nobody can inspect.</li>
+</ul>
+<h2 id="what-latiumx-does-differently">3. What LatiumX does
+differently</h2>
+<p><strong>Money is visible before work starts.</strong> A task cannot
+be listed without its payment sitting in the escrow program. Anyone can
+check the balance on-chain.</p>
+<p><strong>The rules are code.</strong> Who can release funds, when a
+worker can claim payment after silence, and how large the fee can be are
+fixed in the escrow program and readable by anyone.</p>
+<p><strong>Low cost, global reach.</strong> Solana transactions cost a
+fraction of a cent and settle in seconds, and anyone with a wallet such
+as Phantom or Solflare can take part.</p>
+<p><strong>Small scope on purpose.</strong> Version 1 does one thing:
+fund, claim, submit, release. Features are added only once that loop
+works well.</p>
+<h2 id="how-a-task-moves-through-escrow">4. How a task moves through
+escrow</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Stage</th>
+<th>Who acts</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Funded</td>
+<td>Poster</td>
+<td>Writes a brief (stored on IPFS), sets a deadline, deposits LTMX into
+escrow.</td>
+</tr>
+<tr class="even">
+<td>Claimed</td>
+<td>Worker</td>
+<td>Takes the task. It is marked as taken so nobody duplicates the
+work.</td>
+</tr>
+<tr class="odd">
+<td>Submitted</td>
+<td>Worker</td>
+<td>Submits proof of delivery as a link or file hash.</td>
+</tr>
+<tr class="even">
+<td>Released</td>
+<td>Poster or contract</td>
+<td>Poster approves and payment goes to the worker, minus the platform
+fee.</td>
+</tr>
+</tbody>
+</table>
+<p>Other exits:</p>
+<ul>
+<li><strong>Cancel.</strong> The poster can cancel an unclaimed task and
+get the full deposit back.</li>
+<li><strong>Expire.</strong> If nobody submits before the deadline, the
+poster can reclaim the deposit.</li>
+<li><strong>Auto-release.</strong> If the poster does not approve or
+dispute within the review window after a submission, the worker can
+release payment.</li>
+<li><strong>Dispute.</strong> Either side can raise a dispute during the
+review window. In version 1 a reviewer multisig decides. Later versions
+aim to replace this with an open juror system.</li>
+</ul>
+<h2 id="the-ltmx-token">5. The LTMX token</h2>
+<h3 id="purpose">5.1 Purpose</h3>
+<p>LTMX is the unit tasks are priced and paid in, and the unit the
+platform fee is collected in. It has no other promised function. It does
+not give holders a share of revenue, dividends, or ownership of any
+company.</p>
+<h3 id="fair-launch-on-pump.fun">5.2 Fair launch on pump.fun</h3>
+<p>LTMX is created on pump.fun, a Solana launchpad. That fixes the
+token’s basic rules:</p>
+<ul>
+<li><strong>Supply of 1,000,000,000 LTMX</strong>, the standard for
+every pump.fun token. No more can be created.</li>
+<li><strong>No presale, no private round, no team or treasury
+allocation.</strong> The whole supply starts on pump.fun’s bonding
+curve, and everyone buys through the same curve, including the
+creator.</li>
+<li><strong>Price is set by the curve</strong> as people buy and sell,
+not by the LatiumX team.</li>
+<li><strong>When the curve completes</strong>, pump.fun moves the
+liquidity to its own exchange pool (PumpSwap) and burns the LP tokens,
+so the liquidity cannot be withdrawn.</li>
+</ul>
+<h3 id="creator-purchase">5.3 Creator purchase</h3>
+<p>The creator may buy LTMX in the launch transaction. The creator
+wallet, the amount bought and any lock on those tokens will be published
+on latiumx.org on launch day. No other team wallets are used.</p>
+<h3 id="how-the-project-is-funded">5.4 How the project is funded</h3>
+<p>There is no pre-allocated treasury. The project is funded by:</p>
+<ul>
+<li>the platform fee (planned at 2%) on completed marketplace tasks,
+once the escrow program is live, capped in the program so it cannot be
+raised; and</li>
+<li>any creator fees pump.fun pays on LTMX trading, sent to a published
+treasury multisig.</li>
+</ul>
+<p>The official mint address will be published only on latiumx.org and
+the official social accounts. Any other token using the LatiumX name is
+not official.</p>
+<h2 id="technology">6. Technology</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Layer</th>
+<th>Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Network</td>
+<td>Solana (SOL for fees)</td>
+</tr>
+<tr class="even">
+<td>Token</td>
+<td>SPL token created on pump.fun</td>
+</tr>
+<tr class="odd">
+<td>Escrow</td>
+<td>Solana program written in Rust with Anchor</td>
+</tr>
+<tr class="even">
+<td>Task data</td>
+<td>Brief and deliverables on IPFS or Arweave, content hash stored
+on-chain</td>
+</tr>
+<tr class="odd">
+<td>Wallets</td>
+<td>Phantom, Solflare, Backpack via Solana Wallet Adapter</td>
+</tr>
+<tr class="even">
+<td>Front end</td>
+<td>Static web app; no custodial backend</td>
+</tr>
+</tbody>
+</table>
+<p>LatiumX never holds user funds outside the escrow program and never
+asks for private keys or seed phrases.</p>
+<h2 id="roadmap">7. Roadmap</h2>
+<p>Milestones are listed in order. Dates are announced only when a
+milestone is close enough to commit to.</p>
+<ol type="1">
+<li><strong>Plan, site and litepaper.</strong> Done.</li>
+<li><strong>LTMX fair launch on pump.fun.</strong> Mint address
+published on latiumx.org.</li>
+<li><strong>Escrow program.</strong> Every path (fund, claim, submit,
+approve, cancel, expire, dispute, auto-release) covered by tests.</li>
+<li><strong>Devnet task board.</strong> Open to anyone. Real tasks
+completed by community members with test tokens.</li>
+<li><strong>Independent security audit</strong> of the escrow program.
+Full report published.</li>
+<li><strong>Marketplace on mainnet.</strong> Buy services, projects for
+bid and instant hire, paid from escrow.</li>
+<li><strong>AI agent support.</strong> Bots and AI agents can sell
+services and bid on jobs under a named, accountable operator. They are
+always labelled, buyers can choose people only, and payment uses the
+same escrow.</li>
+<li><strong>After launch.</strong> Open dispute jurors, stablecoin
+payments, milestone tasks, reputation badges.</li>
+</ol>
+<h2 id="governance-and-transparency">8. Governance and transparency</h2>
+<p>In version 1, contract parameters that can change (reviewer address,
+fee within its cap) are controlled by a Squads multisig whose signers
+and threshold are published. Treasury movements are on-chain and
+reported publicly. Moving control to token-holder or community
+governance is a later goal and will be proposed openly before it
+happens.</p>
+<h2 id="risks">9. Risks</h2>
+<ul>
+<li><strong>Program risk.</strong> Audited code can still contain bugs.
+Funds in escrow could be lost.</li>
+<li><strong>Market risk.</strong> Most pump.fun tokens never complete
+the bonding curve. LTMX may have little or no liquidity and its price
+may fall to zero.</li>
+<li><strong>Regulatory risk.</strong> Rules for tokens and gig work vary
+by country and can change. LTMX may be restricted where you live.</li>
+<li><strong>Platform risk.</strong> LatiumX depends on Solana and on
+pump.fun. Outages, rule changes or regional restrictions on either
+affect LTMX.</li>
+<li><strong>Adoption risk.</strong> The board is only useful if posters
+and workers use it.</li>
+<li><strong>Impersonation risk.</strong> Scammers may launch fake tokens
+or sites with similar names. Only trust addresses listed on
+latiumx.org.</li>
+</ul>
+<h2 id="disclaimer">10. Disclaimer</h2>
+<p>This litepaper describes a project under development. It is not
+financial, legal or tax advice, and it is not an offer or solicitation
+to buy any security or investment product. Nothing here promises a
+price, profit or return. Plans may change. Check the law where you live
+before using or holding LTMX.</p>
+<p>LatiumX is inspired by Latium and is not affiliated with, endorsed
+by, or a continuation of the original Latium project or team.</p>
+</main>
+<footer>Inspired by Latium · not affiliated with the original team · latiumx.org</footer>
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LatiumX Token</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="LatiumX is a task and bounty board on Solana. Post a task, lock payment in escrow, release it when the work is done. Independent project inspired by Latium.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a work-order ledger. Left-aligned editorial column, one live escrow ticket in the hero, ruled sections like a job sheet. */
+:root {
+  --paper: #f2f4f3;
+  --sheet: #ffffff;
+  --ink: #14211f;
+  --ink-soft: #4d5c59;
+  --rule: #d3dbd8;
+  --escrow: #0d6e64;
+  --escrow-tint: #dcefeb;
+  --stamp: #b5651d;
+  --stamp-tint: #f6e6d6;
+  --f-display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --s-1: 0.8125rem; --s0: 1rem; --s1: 1.25rem; --s2: 1.75rem; --s3: 2.5rem; --s4: clamp(2.5rem, 6vw, 4.25rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1716; --sheet: #16211f; --ink: #e6eeec; --ink-soft: #9fb0ac; --rule: #2a3936;
+    --escrow: #4cc1b2; --escrow-tint: #133430; --stamp: #e39a57; --stamp-tint: #3a2a1b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1716; --sheet: #16211f; --ink: #e6eeec; --ink-soft: #9fb0ac; --rule: #2a3936;
+  --escrow: #4cc1b2; --escrow-tint: #133430; --stamp: #e39a57; --stamp-tint: #3a2a1b; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 var(--s0)/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+a { color: var(--escrow); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--escrow); outline-offset: 3px; border-radius: 2px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.1; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+.label { font: 500 var(--s-1)/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+
+/* notice bar */
+.notice { border-bottom: 1px solid var(--rule); padding-block: 10px; font-size: var(--s-1); color: var(--ink-soft); }
+.notice strong { color: var(--ink); font-weight: 600; }
+
+/* nav */
+nav.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 var(--s1)/1 var(--f-display); color: var(--ink); text-decoration: none; }
+.brand svg { width: 28px; height: 28px; }
+nav.top ul { list-style: none; display: flex; gap: 22px; margin: 0; padding: 0; flex-wrap: wrap; }
+nav.top ul a { color: var(--ink); text-decoration: none; font-weight: 500; }
+nav.top ul a:hover { color: var(--escrow); }
+
+/* hero */
+.hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; padding-block: 48px 64px; }
+.hero > * { min-width: 0; }
+.hero h1 { font-size: var(--s4); font-weight: 700; }
+.hero h1 em { font-style: normal; color: var(--escrow); }
+.hero .lede { font-size: var(--s1); color: var(--ink-soft); margin-top: 20px; max-width: 34ch; line-height: 1.5; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 6px; font: 600 var(--s0)/1 var(--f-body); text-decoration: none; border: 1px solid var(--ink); color: var(--ink); background: transparent; }
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn:hover { border-color: var(--escrow); }
+.btn.primary:hover { background: var(--escrow); }
+
+/* the ticket */
+.ticket { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 22px 22px 18px; position: relative; box-shadow: 0 1px 0 var(--rule), 0 18px 40px -28px rgba(0,0,0,.35); }
+.ticket::before, .ticket::after { content: ""; position: absolute; top: 96px; width: 18px; height: 18px; border-radius: 50%; background: var(--paper); border: 1px solid var(--rule); }
+.ticket::before { left: -10px; clip-path: inset(0 0 0 50%); }
+.ticket::after { right: -10px; clip-path: inset(0 50% 0 0); }
+.t-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.t-id { font: 500 var(--s-1)/1 var(--f-mono); color: var(--ink-soft); }
+.t-title { font: 600 var(--s1)/1.3 var(--f-display); margin-top: 10px; }
+.t-meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font: 400 var(--s-1)/1.4 var(--f-mono); color: var(--ink-soft); }
+.t-perf { border-top: 1px dashed var(--rule); margin: 22px -22px 16px; }
+.t-amount { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.t-amount b { font: 600 var(--s2)/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.chip { font: 500 var(--s-1)/1 var(--f-mono); padding: 6px 9px; border-radius: 999px; background: var(--escrow-tint); color: var(--escrow); white-space: nowrap; }
+.chip.stamp { background: var(--stamp-tint); color: var(--stamp); }
+ol.steps { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+ol.steps li { font: 500 0.72rem/1.2 var(--f-mono); color: var(--ink-soft); padding-top: 10px; border-top: 3px solid var(--rule); transition: border-color .4s, color .4s; }
+ol.steps li.done { border-color: var(--escrow); color: var(--ink); }
+.t-foot { margin-top: 14px; font-size: var(--s-1); color: var(--ink-soft); }
+
+/* sections */
+section.block { border-top: 1px solid var(--rule); padding-block: 64px; display: grid; grid-template-columns: 240px 1fr; gap: 32px; }
+section.block > * { min-width: 0; }
+section.block h2 { font-size: var(--s3); font-weight: 600; margin-top: 8px; }
+.body-col > p { max-width: 62ch; color: var(--ink-soft); }
+.body-col > p + p { margin-top: 14px; }
+
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.flow li { background: var(--sheet); padding: 22px; display: grid; gap: 8px; align-content: start; }
+.flow .n { font: 500 var(--s-1)/1 var(--f-mono); color: var(--escrow); }
+.flow h3 { font-size: var(--s1); font-weight: 600; }
+.flow p { color: var(--ink-soft); font-size: 0.95rem; }
+.flow code { font-family: var(--f-mono); font-size: 0.85em; }
+
+/* allocation */
+.bar { display: flex; height: 18px; border-radius: 4px; overflow: hidden; margin: 6px 0 24px; gap: 2px; }
+.bar span { display: block; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 500 var(--s-1)/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+th.num { text-align: right; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 1px; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 28px; }
+.facts div { border-left: 2px solid var(--escrow); padding-left: 12px; }
+.facts b { display: block; font: 600 var(--s1)/1.2 var(--f-mono); font-variant-numeric: tabular-nums; }
+.facts span { font-size: var(--s-1); color: var(--ink-soft); }
+
+.road { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.road li { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding-block: 14px; border-bottom: 1px solid var(--rule); }
+.road li > * { min-width: 0; }
+.road .st { justify-self: start; align-self: start; }
+
+.disclaimer { background: var(--stamp-tint); border: 1px solid var(--stamp); border-radius: 10px; padding: 24px; display: grid; gap: 10px; }
+.disclaimer h2 { font-size: var(--s2); color: var(--ink); }
+.disclaimer p { color: var(--ink); max-width: 70ch; }
+
+.docs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.docs a { display: grid; gap: 6px; padding: 20px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); text-decoration: none; color: var(--ink); }
+.docs a:hover { border-color: var(--escrow); }
+.docs span { color: var(--ink-soft); font-size: 0.92rem; }
+.addr { font: 400 var(--s-1)/1.5 var(--f-mono); color: var(--ink-soft); overflow-wrap: anywhere; }
+
+footer { border-top: 1px solid var(--rule); padding-block: 32px 48px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: var(--s-1); color: var(--ink-soft); }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; padding-block: 24px 48px; }
+  section.block { grid-template-columns: 1fr; gap: 16px; padding-block: 48px; }
+  .docs, .facts { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .flow { grid-template-columns: 1fr; }
+  ol.steps { grid-template-columns: repeat(2, 1fr); }
+  .road li { grid-template-columns: 1fr; gap: 6px; }
+  nav.top ul { gap: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } ol.steps li { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="notice"><div class="wrap"><strong>Independent project.</strong> LatiumX is inspired by Latium and is not affiliated with the original Latium team or the LATX token. The token has not launched yet. <a href="#disclaimer">Read the disclaimer</a>.</div></div>
+
+<div class="wrap">
+  <nav class="top" aria-label="Main">
+    <a class="brand" href="index.html">
+      <!-- Placeholder mark: replace with final logo -->
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M9 9v14h8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M19 14l5 9M24 14l-5 9" stroke="var(--escrow)" stroke-width="2.5" stroke-linecap="round"/></svg>
+      LatiumX
+    </a>
+    <ul>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#token">Token</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#docs">Docs</a></li>
+      <li><a href="index.html">Marketplace</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <p class="label">Task board · Solana</p>
+      <h1 style="margin-top:14px">Post the task. Lock the pay. <em>Release it when it's done.</em></h1>
+      <p class="lede">LatiumX is a bounty board where payment sits in an on-chain escrow from the moment a task is posted. Workers can see the money is there before they start.</p>
+      <div class="cta">
+        <a class="btn primary" href="#how">See how escrow works</a>
+        <a class="btn" href="litepaper.html">Read the litepaper</a>
+      </div>
+    </div>
+
+    <article class="ticket" aria-label="Example task">
+      <div class="t-head"><span class="t-id">TASK #0142 · example</span><span class="chip" id="t-status">Funded</span></div>
+      <h3 class="t-title">Translate a 600-word FAQ from English to Portuguese</h3>
+      <div class="t-meta"><span>Deadline 5 days</span><span>Proof: IPFS link</span><span>1 worker</span></div>
+      <div class="t-perf"></div>
+      <div class="t-amount"><span class="label">Held in escrow</span><b>1,200 LTMX</b></div>
+      <ol class="steps" id="t-steps">
+        <li class="done">Funded</li><li>Claimed</li><li>Submitted</li><li>Released</li>
+      </ol>
+      <p class="t-foot">2% platform fee goes to the community treasury on release.</p>
+    </article>
+  </header>
+
+  <section class="block" id="how">
+    <div><p class="label">How it works</p><h2>Four steps, one escrow program</h2></div>
+    <div class="body-col">
+      <ol class="flow">
+        <li><span class="n">1 · Poster</span><h3>Fund the task</h3><p>Describe the work, set a deadline and deposit LTMX. The brief is stored on IPFS and its hash goes on-chain.</p></li>
+        <li><span class="n">2 · Worker</span><h3>Claim it</h3><p>One worker claims the task. Other workers see it as taken so nobody does the job twice.</p></li>
+        <li><span class="n">3 · Worker</span><h3>Submit proof</h3><p>Deliver the work and submit a link or file hash as proof.</p></li>
+        <li><span class="n">4 · Escrow</span><h3>Release payment</h3><p>The poster approves and the escrow pays out. If the poster goes silent past the review window, the worker can release it. Disagreements go to a reviewer multisig.</p></li>
+      </ol>
+      <p style="margin-top:20px">LTMX launches through pump.fun. The escrow program (written for Solana with Anchor) and the task board come next, and will run on devnet before anything handles real funds.</p>
+    </div>
+  </section>
+
+  <section class="block" id="token">
+    <div><p class="label">Token</p><h2>LTMX</h2></div>
+    <div class="body-col">
+      <div class="facts">
+        <div><b>1,000,000,000</b><span>Fixed supply, set by pump.fun</span></div>
+        <div><b>0%</b><span>Presale or team allocation</span></div>
+        <div><b>Solana</b><span>SPL token, launched on pump.fun</span></div>
+      </div>
+      <p>LTMX is the unit tasks are priced and paid in. It launches as a fair launch on pump.fun: the whole supply starts on pump.fun's bonding curve and everyone, the team included, buys through the same curve. There is no presale, no private round and no pre-minted team or treasury wallet.</p>
+      <div class="table-scroll" style="margin-top:24px">
+        <table>
+          <thead><tr><th>Launch detail</th><th>LTMX</th></tr></thead>
+          <tbody>
+            <tr><td>Network</td><td>Solana mainnet</td></tr>
+            <tr><td>Launchpad</td><td>pump.fun</td></tr>
+            <tr><td>Supply</td><td>1,000,000,000, fixed. No further minting.</td></tr>
+            <tr><td>Starting distribution</td><td>100% on the bonding curve</td></tr>
+            <tr><td>Creator purchase at launch</td><td>Amount and wallet published here on launch day</td></tr>
+            <tr><td>After the curve completes</td><td>Liquidity moves to pump.fun's PumpSwap pool under pump.fun's rules</td></tr>
+            <tr><td>Treasury funding</td><td>2% fee on completed marketplace tasks, plus any pump.fun creator fees</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:20px">LTMX is a utility token for paying for work on the board. It is not an investment product, and nothing on this site is a promise of price, profit or return. Most tokens launched on pump.fun never complete the bonding curve.</p>
+    </div>
+  </section>
+
+  <section class="block" id="roadmap">
+    <div><p class="label">Roadmap</p><h2>What ships, in order</h2></div>
+    <div class="body-col">
+      <ol class="road">
+        <li><span class="chip st">Done</span><div><b>Plan, site and litepaper</b><p style="color:var(--ink-soft)">Scope, token design and this site.</p></div></li>
+        <li><span class="chip stamp st">Next</span><div><b>LTMX launch on pump.fun</b><p style="color:var(--ink-soft)">Fair launch on Solana. The official mint address is posted on this page.</p></div></li>
+        <li><span class="chip stamp st">Planned</span><div><b>Escrow program</b><p style="color:var(--ink-soft)">Create, claim, submit, approve, cancel, dispute, auto-release.</p></div></li>
+        <li><span class="chip stamp st">Planned</span><div><b>Devnet task board and audit</b><p style="color:var(--ink-soft)">Public testing on Solana devnet, then an independent audit of the escrow program.</p></div></li>
+        <li><span class="chip stamp st">Planned</span><div><b>AI agent support</b><p style="color:var(--ink-soft)">Bots and AI agents sell services and bid on jobs under a named operator, always labelled. <a href="index.html#agents">Details</a>.</p></div></li>
+        <li><span class="chip stamp st">Planned</span><div><b>Marketplace on mainnet</b><p style="color:var(--ink-soft)">Buy services, projects for bid and instant hire, paid from escrow.</p></div></li>
+      </ol>
+      <p style="margin-top:20px">No dates are listed until each milestone is close enough to commit to.</p>
+    </div>
+  </section>
+
+  <section class="block" id="docs">
+    <div><p class="label">Docs</p><h2>Read the details</h2></div>
+    <div class="body-col">
+      <div class="docs">
+        <a href="litepaper.html"><b>Litepaper</b><span>What LatiumX is, how escrow works, token design.</span></a>
+        <a href="index.html"><b>Marketplace</b><span>Preview of the task board with sample listings.</span></a>
+        <a href="#disclaimer"><b>Disclaimer</b><span>Affiliation, risks and what this site does not promise.</span></a>
+      </div>
+      <p class="label" style="margin-top:28px">Official addresses</p>
+      <p class="addr" style="margin-top:6px">LTMX mint (Solana): not launched yet<br>pump.fun page: not launched yet<br>Creator wallet: published on launch day</p>
+      <p class="addr" style="margin-top:10px">Only addresses listed on this page are official. Anyone can create a token called LatiumX on pump.fun. Check the mint address against this page before you buy.</p>
+    </div>
+  </section>
+
+  <section class="block" id="disclaimer" style="display:block">
+    <div class="disclaimer">
+      <p class="label">Disclaimer</p>
+      <h2>Inspired by Latium. Not affiliated with it.</h2>
+      <p>LatiumX is a new, independent project. It takes the idea of a crypto-paid task marketplace from the original Latium project, but it is not run, endorsed or supported by the original Latium team, and LTMX is not the LATX token. No LATX balances carry over.</p>
+      <p>This site is for information only. It is not financial, legal or tax advice, and it is not an offer to sell any security or investment. Crypto assets can lose all their value, on-chain programs can have bugs, tokens launched on pump.fun are highly volatile, and token rules differ by country. Check the law where you live before you use or hold LTMX.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>© LatiumX contributors · latiumx.org</span>
+    <span>Inspired by Latium · not affiliated with the original team</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var steps = document.querySelectorAll('#t-steps li');
+  var status = document.getElementById('t-status');
+  var names = ['Funded', 'Claimed', 'Submitted', 'Released'];
+  if (!steps.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var i = 0;
+  setInterval(function () {
+    i = (i + 1) % names.length;
+    steps.forEach(function (li, k) { li.classList.toggle('done', k <= i); });
+    status.textContent = names[i];
+  }, 1800);
+})();
+</script>
+</body>
+</html>
