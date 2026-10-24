@@ -11,6 +11,16 @@ import {
   SESSION_COOKIE,
 } from './auth';
 import * as v from './validate';
+import {
+  escrowEnabled,
+  listEscrowsByState,
+  listMyEscrows,
+  listProjectEscrows,
+  publicEscrowConfig,
+  readChainConfig,
+  requireEscrow,
+  syncEscrow,
+} from './escrow';
 
 type Ctx = { env: Env; request: Request; url: URL; params: string[]; user: User | null };
 type Handler = (c: Ctx) => Promise<Response>;
@@ -383,7 +393,8 @@ const getProject: Handler = async (c) => {
   } else if (c.user) {
     my_bid = await c.env.DB.prepare('SELECT id, price_ltmx, days, note, status FROM bids WHERE project_id = ? AND bidder_wallet = ?').bind(pid, c.user.wallet).first();
   }
-  return json({ project: projectFromRow(r), mine, bids, my_bid });
+  const escrows = c.user && escrowEnabled(c.env) ? await listProjectEscrows(c.env, pid, c.user) : [];
+  return json({ project: projectFromRow(r), mine, bids, my_bid, escrows });
 };
 
 const createProject: Handler = async (c) => {
@@ -657,6 +668,42 @@ const adminBan: Handler = async (c) => {
   return json({ ok: true });
 };
 
+// ---------- escrow ----------
+
+const escrowConfig: Handler = async (c) => {
+  const cfg = publicEscrowConfig(c.env);
+  if (!cfg.enabled) return json(cfg);
+  let chain = null;
+  try {
+    chain = await readChainConfig(c.env);
+  } catch {
+    // The page still works; it just can't show the fee until the RPC answers.
+  }
+  return json({ ...cfg, fee_bps: chain?.fee_bps ?? null, arbiter: chain?.arbiter ?? null, paused: chain?.paused ?? null });
+};
+
+const syncEscrowHandler: Handler = async (c) => {
+  requireUser(c);
+  requireEscrow(c.env);
+  const b = await readJson(c.request);
+  const address = v.wallet(b.address);
+  const signature = typeof b.signature === 'string' ? b.signature : '';
+  await syncEscrow(c.env, address, signature);
+  return json({ ok: true });
+};
+
+const myEscrows: Handler = async (c) => {
+  const u = requireUser(c);
+  if (!escrowEnabled(c.env)) return json({ escrows: [] });
+  return json({ escrows: await listMyEscrows(c.env, u) });
+};
+
+const adminEscrows: Handler = async (c) => {
+  requireAdmin(c);
+  requireEscrow(c.env);
+  return json({ escrows: await listEscrowsByState(c.env, c.url.searchParams.get('state') || 'disputed') });
+};
+
 // ---------- router ----------
 
 const routes: [string, RegExp, Handler][] = [
@@ -696,6 +743,10 @@ const routes: [string, RegExp, Handler][] = [
   ['POST', /^\/api\/admin\/reports\/(\d+)\/resolve$/, adminResolve],
   ['POST', /^\/api\/admin\/hide$/, adminHide],
   ['POST', /^\/api\/admin\/users\/([^/]+)\/ban$/, adminBan],
+  ['GET', /^\/api\/escrow\/config$/, escrowConfig],
+  ['POST', /^\/api\/escrows\/sync$/, syncEscrowHandler],
+  ['GET', /^\/api\/me\/escrows$/, myEscrows],
+  ['GET', /^\/api\/admin\/escrows$/, adminEscrows],
 ];
 
 export async function handle(request: Request, env: Env): Promise<Response> {

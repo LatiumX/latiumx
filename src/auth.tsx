@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import bs58 from 'bs58';
+import type { PublicKey } from '@solana/web3.js';
 import { api } from './api';
 
 export type Me = {
@@ -34,6 +35,8 @@ type AuthState = {
   error: string | null;
   login: () => void;
   logout: () => Promise<void>;
+  /** Connects the wallet (opening the picker if needed) without logging in again. */
+  ensureWallet: () => Promise<PublicKey>;
   refresh: () => Promise<void>;
 };
 
@@ -41,12 +44,18 @@ const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const wallet = useWallet();
-  const { setVisible } = useWalletModal();
+  const { setVisible, visible } = useWalletModal();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wantLogin = useRef(false);
+  const waiters = useRef<{ resolve: (pk: PublicKey) => void; reject: (e: Error) => void }[]>([]);
+  const settleWaiters = useCallback((pk: PublicKey | null, err?: Error) => {
+    const list = waiters.current;
+    waiters.current = [];
+    for (const w of list) pk ? w.resolve(pk) : w.reject(err || new Error('Wallet not connected.'));
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -89,13 +98,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Picking a wallet in the modal only selects it (autoConnect is off), so connect it here.
   useEffect(() => {
-    if (wantLogin.current && wallet.wallet && !wallet.connected && !wallet.connecting) {
+    if ((wantLogin.current || waiters.current.length) && wallet.wallet && !wallet.connected && !wallet.connecting) {
       wallet.connect().catch((e: any) => {
         wantLogin.current = false;
-        setError(/reject|denied|cancel/i.test(String(e?.message || e)) ? 'You cancelled the connection.' : `Could not connect to ${wallet.wallet?.adapter.name}. Unlock the wallet and try again.`);
+        const msg = /reject|denied|cancel/i.test(String(e?.message || e)) ? 'You cancelled the connection.' : `Could not connect to ${wallet.wallet?.adapter.name}. Unlock the wallet and try again.`;
+        setError(msg);
+        settleWaiters(null, new Error(msg));
       });
     }
-  }, [wallet.wallet, wallet.connected, wallet.connecting, wallet]);
+  }, [wallet.wallet, wallet.connected, wallet.connecting, wallet, settleWaiters]);
+
+  // Hand the connected wallet to anyone waiting in ensureWallet().
+  useEffect(() => {
+    if (wallet.connected && wallet.publicKey) settleWaiters(wallet.publicKey);
+  }, [wallet.connected, wallet.publicKey, settleWaiters]);
+
+  // The picker was closed without choosing a wallet.
+  useEffect(() => {
+    if (!visible && !wallet.wallet && waiters.current.length) settleWaiters(null, new Error('Pick a wallet to continue.'));
+  }, [visible, wallet.wallet, settleWaiters]);
+
+  const ensureWallet = useCallback((): Promise<PublicKey> => {
+    if (wallet.connected && wallet.publicKey) return Promise.resolve(wallet.publicKey);
+    return new Promise<PublicKey>((resolve, reject) => {
+      waiters.current.push({ resolve, reject });
+      if (!wallet.wallet) setVisible(true);
+      else if (!wallet.connecting)
+        wallet.connect().catch((e: any) =>
+          settleWaiters(null, new Error(/reject|denied|cancel/i.test(String(e?.message || e)) ? 'You cancelled the connection.' : 'Could not connect your wallet. Unlock it and try again.')),
+        );
+    });
+  }, [wallet, setVisible, settleWaiters]);
 
   // After the person picks a wallet from the modal, ask it to sign the login message.
   useEffect(() => {
@@ -123,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refresh();
   }, [wallet, refresh]);
 
-  return <AuthContext.Provider value={{ me, loading, signingIn, error, login, logout, refresh }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ me, loading, signingIn, error, login, logout, refresh, ensureWallet }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

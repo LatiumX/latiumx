@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth';
 import { shortWallet } from './api';
+import { useEscrowConfig } from './escrow';
 
 const TABS: [string, string][] = [
   ['services', 'Buy Services'],
@@ -85,10 +86,16 @@ export function TopBar({ route }: { route: string }) {
 }
 
 export function Strip() {
+  const cfg = useEscrowConfig();
+  const escrowNote = !cfg?.enabled
+    ? 'Payments through escrow are not live yet.'
+    : cfg.cluster === 'devnet'
+      ? 'Escrow is in test mode on Solana devnet: use test tokens only.'
+      : 'Escrow is new: start with small amounts.';
   return (
     <div className="strip gutter">
       <div className="wrap">
-        LatiumX is an independent project inspired by Latium. It is not affiliated with the original Latium team. Payments through escrow are not live yet. <a href="token.html#disclaimer">Disclaimer</a>
+        LatiumX is an independent project inspired by Latium. It is not affiliated with the original Latium team. {escrowNote} <a href="token.html#disclaimer">Disclaimer</a>
       </div>
     </div>
   );

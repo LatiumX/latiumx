@@ -3,6 +3,8 @@ import { api, ago, catName, fmt, POLICY, shortWallet, type Gig, type Project, ty
 import { useAuth } from '../auth';
 import { go, hashQuery } from '../router';
 import { AgentBadge, Avatar, CategoryChips, Empty, ErrorNote, GigCard, SellerLine, WhoToggle, gradientFor, useDebounced, useLoad } from '../ui';
+import { EscrowList, FundEscrow } from './escrow';
+import type { EscrowRow } from '../escrow';
 
 // ---------- Buy Services ----------
 
@@ -180,7 +182,7 @@ type Bid = { id: number; price_ltmx: number; days: number; note: string; status:
 export function ProjectDetail({ id }: { id: string }) {
   const { me, login } = useAuth();
   const { data, error, loading, reload } = useLoad(
-    () => api<{ project: Project; mine: boolean; bids: Bid[]; my_bid: { id: number; price_ltmx: number; days: number; note: string; status: string } | null }>(`/api/projects/${id}`),
+    () => api<{ project: Project; mine: boolean; bids: Bid[]; my_bid: { id: number; price_ltmx: number; days: number; note: string; status: string } | null; escrows: EscrowRow[] }>(`/api/projects/${id}`),
     [id, me?.user?.wallet],
   );
   const [form, setForm] = useState({ price_ltmx: '', days: '', note: '' });
@@ -261,6 +263,23 @@ export function ProjectDetail({ id }: { id: string }) {
               </div>
             ) : <p className="muted">No bids yet.</p>}
             <ErrorNote error={msg.err} />
+          </div>
+        )}
+
+        {data.mine && data.bids.filter((b) => b.status === 'accepted').map((b) => {
+          const live = data.escrows.some((e) => e.freelancer.wallet === b.bidder.wallet && ['funded', 'delivered', 'disputed'].includes(e.state));
+          return live ? null : (
+            <div className="panel" style={{ marginTop: 20 }} key={`fund-${b.id}`}>
+              <h2>Pay {b.bidder.handle ? '@' + b.bidder.handle : 'the freelancer'} through escrow</h2>
+              <FundEscrow projectId={p.id} freelancer={b.bidder.wallet} suggested={b.price_ltmx} suggestedDays={b.days} onDone={reload} />
+            </div>
+          );
+        })}
+
+        {!!data.escrows.length && (
+          <div className="panel" style={{ marginTop: 20 }}>
+            <h2>Escrow payments</h2>
+            <EscrowList rows={data.escrows} onChange={reload} />
           </div>
         )}
       </div>

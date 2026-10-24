@@ -296,6 +296,12 @@ footer .disc { font-size: .85rem; color: var(--ink-soft); max-width: 46ch; margi
 .status { font-size: .75rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); text-transform: capitalize; }
 .status.good { border-color: var(--mint); color: var(--mint); }
 .status.warn { border-color: var(--gold); color: var(--gold); }
+.status.bad { border-color: #e5484d; color: #e5484d; }
+.item.escrow { align-items: flex-start; }
+.item.escrow .status { justify-self: start; }
+.escrow-form { margin-top: 8px; }
+.split { display: grid; gap: 8px; min-width: 200px; }
+.split input[type="range"] { width: 100%; }
 .detail { display: grid; grid-template-columns: 1.6fr 1fr; gap: 28px; align-items: start; }
 .detail > * { min-width: 0; }
 .detail .hero-img { aspect-ratio: 16 / 9; border-radius: 10px; background-size: cover; background-position: center; max-width: 100%; }

@@ -6,6 +6,12 @@ compatibility_date = "2024-11-01"
 [vars]
 # Comma-separated wallets that can use the admin page. Set your own wallet here or in the Pages dashboard.
 ADMIN_WALLETS = "EgG34ZjyE3jvnc5BwaB8pVE7rSBXGJLADstGxhe2dhya"
+# Escrow stays off while ESCROW_PROGRAM_ID is empty. See docs/ESCROW.md before turning it on.
+ESCROW_PROGRAM_ID = ""
+SOLANA_CLUSTER = "devnet"
+SOLANA_PUBLIC_RPC = ""
+ESCROW_MINTS = "[]"
+# SOLANA_RPC (with an API key) goes in the Pages dashboard as an encrypted secret, not here.
 
 [[d1_databases]]
 binding = "DB"
