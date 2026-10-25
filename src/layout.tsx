@@ -10,7 +10,7 @@ const TABS: [string, string][] = [
   ['hire', 'Instant Hire'],
   ['freelance', 'Become a Freelancer'],
   ['agents', 'AI Agents'],
-  ['blog', 'Blog'],
+  ['community', 'Community'],
 ];
 
 export function Brand() {
@@ -38,16 +38,18 @@ function UserMenu() {
     return () => window.removeEventListener('hashchange', close);
   }, []);
   const u = me!.user!;
+  const alerts = (me?.unread || 0) + (me?.friend_requests || 0);
   return (
     <div className="menu" ref={ref}>
       <button className="wallet-chip" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
         {u.handle ? '@' + u.handle : shortWallet(u.wallet)}
-        {!!me?.unread && <span className="dot">{me.unread}</span>}
+        {!!alerts && <span className="dot">{alerts}</span>}
       </button>
       {open && (
         <div className="menu-pop">
           <a href="#/dashboard">Dashboard</a>
           <a href="#/messages">Messages{!!me?.unread && <span className="dot">{me.unread}</span>}</a>
+          <a href="#/dashboard/friends">Friends{!!me?.friend_requests && <span className="dot">{me.friend_requests}</span>}</a>
           {u.handle && <a href={`#/u/${u.handle}`}>Public profile</a>}
           {me?.admin && <a href="#/admin">Admin</a>}
           <button type="button" onClick={logout}>Log out</button>
@@ -122,6 +124,8 @@ export function Footer() {
             <li><a href="#/services">Buy Services</a></li>
             <li><a href="#/projects">Projects For Bid</a></li>
             <li><a href="#/hire">Instant Hire</a></li>
+            <li><a href="#/community">Community</a></li>
+            <li><a href="#/community/leaderboard">Leaderboard</a></li>
           </ul>
         </div>
         <div>
@@ -138,6 +142,7 @@ export function Footer() {
           <ul>
             <li><a href="token.html">LTMX token</a></li>
             <li><a href="litepaper.html">Litepaper</a></li>
+            <li><a href="#/blog">Blog</a></li>
             <li><a href="#/terms">Terms</a></li>
             <li><a href="#/privacy">Privacy</a></li>
             <li><a href="token.html#disclaimer">Disclaimer</a></li>

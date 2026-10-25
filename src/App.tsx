@@ -5,6 +5,7 @@ import { Agents, Blog, Freelance, Home, Login, Privacy, Terms } from './pages/st
 import { GigDetail, Hire, ProjectDetail, Projects, Services, UserProfile } from './pages/market';
 import { Admin, Dashboard, Messages } from './pages/account';
 import { ReportBug } from './pages/bugs';
+import { Community } from './pages/community';
 
 function View({ route }: { route: string[] }) {
   const [page, a, b] = route;
@@ -24,6 +25,7 @@ function View({ route }: { route: string[] }) {
     case 'messages': return <Messages id={a} />;
     case 'admin': return <Admin />;
     case 'bug': return <ReportBug />;
+    case 'community': return <Community sub={a} />;
     case 'terms': return <Terms />;
     case 'privacy': return <Privacy />;
     default:

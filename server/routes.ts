@@ -11,6 +11,7 @@ import {
   SESSION_COOKIE,
 } from './auth';
 import * as v from './validate';
+import { PUBLIC_USER_COLS, VISIBLE_USER, pickUser, publicProfile } from './users';
 import {
   escrowEnabled,
   listEscrowsByState,
@@ -21,12 +22,12 @@ import {
   requireEscrow,
   syncEscrow,
 } from './escrow';
+import { friendAction, isBlockedEitherWay, leaderboard, myFriends, pendingFriendRequests, relationTo, searchPeople, setBlock, userStats, walletParam } from './social';
 import { createBugReport, listBugReports, myBugReports, updateBugReport } from './bugs';
 
 type Ctx = { env: Env; request: Request; url: URL; params: string[]; user: User | null };
 type Handler = (c: Ctx) => Promise<Response>;
 
-const ONLINE_WINDOW = 15 * 60;
 const HIRE_WINDOW = 30 * 60;
 const MAX_ACTIVE_GIGS = 20;
 const BIDS_PER_HOUR = 20;
@@ -65,45 +66,6 @@ const id = (s: string) => {
   if (!Number.isInteger(n) || n < 1) throw notFound();
   return n;
 };
-
-/** Columns describing a public seller/user, joined as alias `u` and operator alias `o`. */
-const PUBLIC_USER_COLS = `u.wallet AS u_wallet, u.handle AS u_handle, u.display_name AS u_display_name, u.country AS u_country,
-  u.kind AS u_kind, u.human_review AS u_human_review, u.last_seen_at AS u_last_seen_at, o.handle AS o_handle`;
-
-/** Users visible in listings: not banned, profile finished, and agents approved by an active operator. */
-const VISIBLE_USER = `u.banned = 0 AND u.handle IS NOT NULL
-  AND (u.kind = 'person' OR (u.operator_approved = 1 AND o.wallet IS NOT NULL AND o.banned = 0))`;
-
-function pickUser(row: Record<string, unknown>) {
-  return {
-    wallet: row.u_wallet,
-    handle: row.u_handle,
-    display_name: row.u_display_name,
-    country: row.u_country,
-    kind: row.u_kind,
-    human_review: row.u_kind === 'agent' ? row.u_human_review : undefined,
-    operator: row.u_kind === 'agent' ? row.o_handle : undefined,
-    online: now() - Number(row.u_last_seen_at) < ONLINE_WINDOW,
-  };
-}
-
-function publicProfile(u: User, operatorHandle: string | null) {
-  return {
-    wallet: u.wallet,
-    handle: u.handle,
-    display_name: u.display_name,
-    bio: u.bio,
-    country: u.country,
-    kind: u.kind,
-    operator: u.kind === 'agent' ? operatorHandle : undefined,
-    human_review: u.kind === 'agent' ? u.human_review : undefined,
-    manifest_url: u.kind === 'agent' ? u.manifest_url : undefined,
-    hourly_ltmx: u.hourly_ltmx,
-    available: !!u.available,
-    online: now() - u.last_seen_at < ONLINE_WINDOW,
-    created_at: u.created_at,
-  };
-}
 
 function gigFromRow(r: Record<string, unknown>) {
   return {
@@ -193,6 +155,7 @@ const getMe: Handler = async (c) => {
     admin: isAdmin(c.env, u),
     agents: agents.results,
     unread: unread?.n ?? 0,
+    friend_requests: await pendingFriendRequests(c.env, u),
   });
 };
 
@@ -258,7 +221,8 @@ const getUser: Handler = async (c) => {
   const agents = u.kind === 'person'
     ? await c.env.DB.prepare("SELECT handle, display_name, human_review FROM users WHERE operator_wallet = ? AND kind = 'agent' AND operator_approved = 1 AND banned = 0 AND handle IS NOT NULL").bind(u.wallet).all()
     : { results: [] };
-  return json({ user: publicProfile(u, op?.handle ?? null), gigs: gigs.results.map(gigFromRow), agents: agents.results });
+  const [stats, rel] = await Promise.all([userStats(c.env, u.wallet), relationTo(c.env, c.user, u.wallet)]);
+  return json({ user: publicProfile(u, op?.handle ?? null), gigs: gigs.results.map(gigFromRow), agents: agents.results, stats, ...rel });
 };
 
 // ---------- gigs ----------
@@ -561,6 +525,7 @@ const openConversation: Handler = async (c) => {
   const cid = ctype === 'direct' ? 0 : v.int(b.context_id, 'Context id', 1, Number.MAX_SAFE_INTEGER);
   const o = await c.env.DB.prepare('SELECT handle, banned FROM users WHERE wallet = ?').bind(other).first<{ handle: string | null; banned: number }>();
   if (!o || !o.handle || o.banned) throw notFound('That user is not available.');
+  if (await isBlockedEitherWay(c.env, u.wallet, other)) throw forbidden("You can't message this user.");
   const [a, z] = [u.wallet, other].sort();
   const t = now();
   await c.env.DB.prepare(
@@ -608,6 +573,7 @@ const sendMessage: Handler = async (c) => {
   await requireActiveProfile(c);
   const { u, cv } = await requireConversation(c, id(c.params[0]));
   const body = v.str((await readJson(c.request)).body, 'Message', 1, 4000);
+  if (await isBlockedEitherWay(c.env, cv.a_wallet, cv.b_wallet)) throw forbidden("You can't message this user.");
   await rateLimit(c.env, 'SELECT COUNT(*) AS n FROM messages WHERE sender_wallet = ? AND created_at > ?', [u.wallet, now() - 3600], MESSAGES_PER_HOUR,
     'You have sent a lot of messages in the last hour. Try again later.');
   const t = now();
@@ -705,6 +671,27 @@ const adminEscrows: Handler = async (c) => {
   return json({ escrows: await listEscrowsByState(c.env, c.url.searchParams.get('state') || 'disputed') });
 };
 
+// ---------- community ----------
+
+const listPeople: Handler = async (c) => json(await searchPeople(c.env, c.user, c.url.searchParams));
+
+const getLeaderboard: Handler = async (c) => json(await leaderboard(c.env, c.url.searchParams.get('period') || 'all'));
+
+const getMyFriends: Handler = async (c) => json(await myFriends(c.env, requireUser(c)));
+
+const friend = (action: 'request' | 'accept' | 'decline' | 'remove'): Handler => async (c) => {
+  const u = action === 'request' || action === 'accept' ? await requireActiveProfile(c) : requireUser(c);
+  const relation = await friendAction(c.env, u, walletParam(c.params[0]), action);
+  return json({ relation });
+};
+
+const blockUser: Handler = async (c) => {
+  const u = requireUser(c);
+  const blocked = (await readJson(c.request)).blocked !== false;
+  await setBlock(c.env, u, walletParam(c.params[0]), blocked);
+  return json({ blocked });
+};
+
 // ---------- bug reports ----------
 
 const createBug: Handler = async (c) => {
@@ -769,6 +756,14 @@ const routes: [string, RegExp, Handler][] = [
   ['POST', /^\/api\/escrows\/sync$/, syncEscrowHandler],
   ['GET', /^\/api\/me\/escrows$/, myEscrows],
   ['GET', /^\/api\/admin\/escrows$/, adminEscrows],
+  ['GET', /^\/api\/people$/, listPeople],
+  ['GET', /^\/api\/leaderboard$/, getLeaderboard],
+  ['GET', /^\/api\/me\/friends$/, getMyFriends],
+  ['POST', /^\/api\/friends\/([^/]+)\/request$/, friend('request')],
+  ['POST', /^\/api\/friends\/([^/]+)\/accept$/, friend('accept')],
+  ['POST', /^\/api\/friends\/([^/]+)\/decline$/, friend('decline')],
+  ['POST', /^\/api\/friends\/([^/]+)\/remove$/, friend('remove')],
+  ['POST', /^\/api\/blocks\/([^/]+)$/, blockUser],
   ['POST', /^\/api\/bugs$/, createBug],
   ['GET', /^\/api\/me\/bugs$/, myBugs],
   ['GET', /^\/api\/admin\/bugs$/, adminBugs],

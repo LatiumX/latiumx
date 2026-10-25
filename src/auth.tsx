@@ -26,6 +26,7 @@ export type MeResponse = {
   admin?: boolean;
   agents?: { wallet: string; handle: string | null; display_name: string; operator_approved: number; human_review: string }[];
   unread?: number;
+  friend_requests?: number;
 };
 
 type AuthState = {

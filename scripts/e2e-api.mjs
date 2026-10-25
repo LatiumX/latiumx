@@ -154,6 +154,59 @@ ok(r.status === 200 && r.data.bugs.length === 1 && r.data.bugs[0].status === 'ne
 ok((await call(alice, 'GET', '/api/admin/bugs')).status === 403, 'non-admin cannot list bug reports');
 ok((await call(alice, 'POST', `/api/admin/bugs/${bugId}`, { status: 'rewarded' })).status === 403, 'non-admin cannot mark rewarded');
 
+// community: people search, friends, blocking, leaderboard
+r = await call(null, 'GET', '/api/people?q=alice');
+ok(r.status === 200 && r.data.people.some((p) => p.handle === 'alice-design') && !r.data.people.some((p) => p.handle === 'bob'), 'search people by name');
+ok(r.data.people[0].relation === 'none' && r.data.people[0].bio === 'Designer', 'logged-out search has no relation');
+r = await call(null, 'GET', '/api/people?who=agents');
+ok(r.data.people.every((p) => p.kind === 'agent'), 'search filters to AI agents');
+r = await call(null, 'GET', '/api/people?q=100%25');
+ok(r.status === 200 && r.data.people.length === 0, 'search escapes wildcard characters');
+r = await call(alice, 'GET', '/api/people?sort=jobs');
+ok(r.data.people[0].handle === 'tidy-bot' && r.data.people[0].jobs_won === 1, 'sort people by jobs won');
+ok(r.data.people.find((p) => p.handle === 'alice-design').relation === 'self', 'own card marked as self');
+ok((await call(null, 'POST', `/api/friends/${bob.address}/request`)).status === 401, 'friend request needs login');
+ok((await call(alice, 'POST', `/api/friends/${alice.address}/request`)).status === 400, 'cannot friend yourself');
+ok((await call(alice, 'POST', `/api/friends/not-a-wallet/request`)).status === 400, 'friend request validates wallet');
+r = await call(alice, 'POST', `/api/friends/${bob.address}/request`);
+ok(r.status === 200 && r.data.relation === 'outgoing', 'alice sends friend request');
+ok((await call(alice, 'POST', `/api/friends/${bob.address}/request`)).data.relation === 'outgoing', 'repeat request is harmless');
+r = await call(bob, 'GET', '/api/me');
+ok(r.data.friend_requests === 1, 'bob sees one pending friend request');
+r = await call(bob, 'GET', '/api/users/alice-design');
+ok(r.data.relation === 'incoming' && r.data.blocked === false, 'profile shows incoming request');
+ok((await call(alice, 'POST', `/api/friends/${bob.address}/accept`)).status === 404, 'sender cannot accept own request');
+r = await call(bob, 'POST', `/api/friends/${alice.address}/accept`);
+ok(r.status === 200 && r.data.relation === 'friends', 'bob accepts');
+r = await call(alice, 'GET', '/api/me/friends');
+ok(r.data.friends.length === 1 && r.data.friends[0].handle === 'bob' && r.data.incoming.length === 0, 'friends list');
+r = await call(alice, 'GET', '/api/people?show=friends');
+ok(r.data.people.length === 1 && r.data.people[0].relation === 'friends', 'search my friends only');
+r = await call(null, 'GET', '/api/users/bob');
+ok(r.data.stats.friends === 1, 'profile shows friend count');
+r = await call(null, 'GET', '/api/leaderboard');
+ok(r.status === 200 && r.data.freelancers[0]?.handle === 'tidy-bot' && r.data.freelancers[0].score === 1, 'leaderboard: top freelancer');
+ok(r.data.clients[0]?.handle === 'alice-design' && r.data.connected.length === 2, 'leaderboard: clients and connected');
+ok((await call(null, 'GET', '/api/leaderboard?period=7d')).data.period === '7d', 'leaderboard period');
+// bot asks alice, alice declines
+ok((await call(bot, 'POST', `/api/friends/${alice.address}/request`)).data.relation === 'outgoing', 'agent sends friend request');
+ok((await call(alice, 'POST', `/api/friends/${bot.address}/decline`)).data.relation === 'none', 'alice declines');
+// blocking
+ok((await call(bob, 'POST', `/api/blocks/${alice.address}`, { blocked: true })).status === 200, 'bob blocks alice');
+r = await call(alice, 'GET', '/api/me/friends');
+ok(r.data.friends.length === 0, 'block removes the friendship');
+ok((await call(alice, 'POST', `/api/friends/${bob.address}/request`)).status === 403, 'blocked user cannot send friend request');
+ok((await call(alice, 'POST', '/api/conversations', { with: bob.address, context_type: 'direct' })).status === 403, 'blocked user cannot open a conversation');
+ok((await call(alice, 'POST', `/api/conversations/${convo}/messages`, { body: 'hello?' })).status === 403, 'blocked user cannot message in an old conversation');
+ok((await call(bob, 'POST', `/api/conversations/${convo}/messages`, { body: 'hello?' })).status === 403, 'blocker cannot message either');
+r = await call(bob, 'GET', '/api/people?q=alice');
+ok(r.data.people.length === 0, 'blocked user hidden from blocker search');
+r = await call(bob, 'GET', '/api/users/alice-design');
+ok(r.data.blocked === true, 'profile shows blocked');
+ok((await call(bob, 'GET', '/api/me/friends')).data.blocked[0].wallet === alice.address, 'blocked list');
+ok((await call(bob, 'POST', `/api/blocks/${alice.address}`, { blocked: false })).status === 200, 'bob unblocks');
+ok((await call(alice, 'POST', '/api/conversations', { with: bob.address, context_type: 'direct' })).status < 300, 'messaging works after unblock');
+
 if (process.env.ADMIN_KEY) {
   const adm = { kp: nacl.sign.keyPair.fromSecretKey(bs58.decode(process.env.ADMIN_KEY)), token: null };
   adm.address = bs58.encode(adm.kp.publicKey);

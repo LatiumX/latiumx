@@ -155,7 +155,7 @@ async function loginViaUi(page, walletName) {
   ok(await b.locator('.bubble', { hasText: 'Yes, Friday works.' }).isVisible(), 'reply arrives for buyer (polling)');
 
   // pages render
-  for (const r of ['hire', 'agents', 'freelance', 'blog', 'terms', 'privacy', 'u/pixelharbor-' + RUN, 'nope']) {
+  for (const r of ['hire', 'agents', 'freelance', 'blog', 'community', 'community/leaderboard', 'dashboard/friends', 'terms', 'privacy', 'u/pixelharbor-' + RUN, 'nope']) {
     await a.goto(BASE + '/#/' + r);
     await a.waitForTimeout(300);
   }
@@ -185,6 +185,60 @@ async function loginViaUi(page, walletName) {
   await a.setViewportSize({ width: 390, height: 800 });
   ok(await a.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'bug page fits a phone screen');
   await a.screenshot({ path: `${OUT}/b-bug-phone.png` });
+  await a.setViewportSize({ width: 1360, height: 900 });
+
+  // community: search, add friend, accept, leaderboard, block
+  await a.goto(BASE + '/#/community');
+  ok(await a.locator('.topbar .tabs a', { hasText: 'Community' }).isVisible(), 'community tab in top bar');
+  await a.fill('.people-search', 'northstack-' + RUN);
+  const card = a.locator(`.person[data-person="northstack-${RUN}"]`);
+  await card.waitFor();
+  ok(await a.waitForFunction(() => document.querySelectorAll('.person').length === 1, null, { timeout: 5000 }).then(() => true, () => false), 'search finds the other user');
+  await card.getByRole('button', { name: 'Add friend' }).click();
+  await card.getByText('Request sent').waitFor();
+  ok(true, 'friend request sent from search');
+  await a.screenshot({ path: `${OUT}/c-people.png`, fullPage: true });
+  await b.goto(BASE + '/#/services');
+  await b.reload();
+  await b.locator('.wallet-chip .dot').waitFor({ timeout: 10000 });
+  await b.locator('.wallet-chip').click();
+  await b.locator('.menu-pop a', { hasText: 'Friends' }).click();
+  const req = b.locator(`.item[data-friend="pixelharbor-${RUN}"]`);
+  await req.getByRole('button', { name: 'Accept' }).click();
+  await b.getByRole('heading', { name: 'Friends (1)' }).waitFor();
+  ok(true, 'friend request accepted from dashboard');
+  await b.screenshot({ path: `${OUT}/c-friends-phone.png`, fullPage: true });
+  ok(await b.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'friends page fits a phone screen');
+  await b.goto(BASE + '/#/u/pixelharbor-' + RUN);
+  await b.locator('.friend-act .status', { hasText: 'Friends' }).waitFor();
+  ok(await b.locator('.stats', { hasText: '1 friend' }).isVisible(), 'profile shows friends and stats');
+  await b.screenshot({ path: `${OUT}/c-profile-phone.png`, fullPage: true });
+  await b.goto(BASE + '/#/community/leaderboard');
+  await b.locator('.board[data-board="connected"] li').first().waitFor();
+  ok(await b.locator('.board[data-board="freelancers"]', { hasText: 'northstack-' + RUN }).isVisible(), 'leaderboard lists the freelancer who won a job');
+  ok(await b.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'leaderboard fits a phone screen');
+  await b.screenshot({ path: `${OUT}/c-leaderboard-phone.png`, fullPage: true });
+  await a.goto(BASE + '/#/community/leaderboard');
+  await a.locator('.board li').first().waitFor();
+  await a.screenshot({ path: `${OUT}/c-leaderboard.png`, fullPage: true });
+  // block from the profile
+  await a.goto(BASE + '/#/u/northstack-' + RUN);
+  a.once('dialog', (d) => d.accept());
+  await a.getByRole('button', { name: 'Block' }).click();
+  await a.getByText('You blocked').waitFor();
+  ok(!(await a.getByRole('button', { name: 'Message' }).isVisible()), 'blocking hides Message and Add friend');
+  await b.goto(BASE + '/#/u/pixelharbor-' + RUN);
+  await b.getByRole('button', { name: 'Message' }).click();
+  await b.getByText("You can't message this user.").waitFor();
+  ok(true, 'blocked user cannot start a conversation');
+  await a.getByRole('button', { name: 'Unblock' }).click();
+  await a.getByRole('button', { name: 'Add friend' }).waitFor();
+  ok(true, 'unblock');
+  for (const w of [1600, 1440, 1360, 1280, 1100, 800]) {
+    await a.setViewportSize({ width: w, height: 900 });
+    ok(await a.evaluate(() => { const t = document.querySelector('.topbar .tabs'); const last = t.lastElementChild.getBoundingClientRect(); return t.scrollWidth <= t.clientWidth + 1 && last.right <= window.innerWidth && document.documentElement.scrollWidth <= window.innerWidth; }), `every top bar tab visible at ${w}px`);
+    if (w === 1440 || w === 1280) await a.screenshot({ path: `${OUT}/c-topbar-${w}.png`, clip: { x: 0, y: 0, width: w, height: 200 } });
+  }
   await a.setViewportSize({ width: 1360, height: 900 });
 
   // logout

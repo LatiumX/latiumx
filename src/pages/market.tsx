@@ -5,6 +5,7 @@ import { go, hashQuery } from '../router';
 import { AgentBadge, Avatar, CategoryChips, Empty, ErrorNote, GigCard, SellerLine, WhoToggle, gradientFor, useDebounced, useLoad } from '../ui';
 import { EscrowList, FundEscrow } from './escrow';
 import type { EscrowRow } from '../escrow';
+import { BlockButton, FriendButton, Stats, type Relation } from './community';
 
 // ---------- Buy Services ----------
 
@@ -45,7 +46,7 @@ export function Services() {
 
 // ---------- shared actions ----------
 
-function useMessageAction() {
+export function useMessageAction() {
   const { me, login } = useAuth();
   const [err, setErr] = useState<string | null>(null);
   const start = async (other: PublicUser, context_type: 'gig' | 'project' | 'direct', context_id?: number) => {
@@ -371,14 +372,25 @@ export function Hire() {
 export function UserProfile({ handle }: { handle: string }) {
   const { me } = useAuth();
   const { data, error, loading } = useLoad(
-    () => api<{ user: HirePerson & { created_at: number }; gigs: Gig[]; agents: { handle: string; display_name: string; human_review: string }[] }>(`/api/users/${encodeURIComponent(handle)}`),
-    [handle],
+    () => api<{
+      user: HirePerson & { created_at: number };
+      gigs: Gig[];
+      agents: { handle: string; display_name: string; human_review: string }[];
+      stats: { friends: number; jobs_won: number; projects_awarded: number };
+      relation: Relation;
+      blocked: boolean;
+    }>(`/api/users/${encodeURIComponent(handle)}`),
+    [handle, me?.user?.wallet],
   );
   const msg = useMessageAction();
+  const [blocked, setBlocked] = useState<boolean | null>(null);
+  const [relation, setRelation] = useState<Relation | null>(null);
   if (loading) return <p className="loading page">Loading…</p>;
   if (error || !data) return <div className="page"><ErrorNote error={error} /></div>;
   const u = data.user;
   const self = me?.user?.wallet === u.wallet;
+  const isBlocked = blocked ?? data.blocked;
+  const rel = isBlocked ? 'none' : relation ?? data.relation;
   return (
     <div className="page">
       <div className="panel" style={{ display: 'grid', gap: 14 }}>
@@ -392,13 +404,18 @@ export function UserProfile({ handle }: { handle: string }) {
         {u.kind === 'agent' && (
           <p className="demo-note">AI agent operated by <a href={`#/u/${u.operator}`}>@{u.operator}</a>. Human review: <b>{u.human_review}</b>.{u.manifest_url && <> <a href={u.manifest_url} rel="noopener noreferrer nofollow" target="_blank">Agent manifest</a></>}</p>
         )}
+        <Stats items={[['friend', 'friends', data.stats.friends], ['job won', 'jobs won', data.stats.jobs_won], ['project awarded', 'projects awarded', data.stats.projects_awarded]]} />
         {u.bio && <p className="prose" style={{ marginTop: 0 }}>{u.bio}</p>}
+        {!self && isBlocked && <p className="demo-note">You blocked @{u.handle}. You can't message each other or be friends until you unblock them.</p>}
         {!self && (
           <div className="actions">
-            <button className="btn sm" type="button" onClick={() => msg.start(u, 'direct')}>Message</button>
+            {!isBlocked && <button className="btn sm" type="button" onClick={() => msg.start(u, 'direct')}>Message</button>}
+            {!isBlocked && <FriendButton user={u} relation={rel} onChange={setRelation} />}
+            <BlockButton user={u} blocked={isBlocked} onChange={(b) => { setBlocked(b); setRelation('none'); }} />
             <ReportButton type="user" id={u.wallet} />
           </div>
         )}
+        {self && <div className="actions"><a className="btn ghost sm" href="#/dashboard">Edit profile</a><a className="btn ghost sm" href="#/dashboard/friends">Your friends</a></div>}
         <ErrorNote error={msg.err} />
       </div>
       {!!data.agents.length && (

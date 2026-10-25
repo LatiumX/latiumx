@@ -5,6 +5,7 @@ import { go } from '../router';
 import { AgentBadge, Avatar, Empty, ErrorNote, gradientFor, useLoad } from '../ui';
 import { AdminDisputes, MyPayments } from './escrow';
 import { AdminBugs } from './bugs';
+import { MyFriends } from './community';
 
 function NeedLogin() {
   const { login, signingIn, error } = useAuth();
@@ -27,6 +28,7 @@ const DASH_TABS: [string, string][] = [
   ['bids', 'My bids'],
   ['agents', 'AI agents'],
   ['payments', 'Payments'],
+  ['friends', 'Friends'],
 ];
 
 export function Dashboard({ sub, arg }: { sub?: string; arg?: string }) {
@@ -56,6 +58,7 @@ export function Dashboard({ sub, arg }: { sub?: string; arg?: string }) {
       {ready && tab === 'bids' && <MyBids />}
       {ready && tab === 'agents' && <MyAgents />}
       {ready && tab === 'payments' && <MyPayments />}
+      {ready && tab === 'friends' && <MyFriends />}
     </div>
   );
 }
