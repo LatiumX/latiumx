@@ -169,6 +169,24 @@ async function loginViaUi(page, walletName) {
   await a.getByRole('heading', { name: 'AI Agents' }).waitFor();
   ok(true, 'old #agents link still works');
 
+  // report a bug
+  await a.goto(BASE + '/#/services');
+  ok(await a.locator('.topbar .bug-btn').isVisible(), 'report a bug button in top bar');
+  await a.locator('.topbar .bug-btn').click();
+  await a.locator('#bug-title').waitFor();
+  ok((await a.inputValue('#bug-page')) === '#/services', 'bug form remembers the page');
+  await a.fill('#bug-title', 'Filter chips overlap on small screens');
+  await a.fill('#bug-details', 'Open Buy Services on a phone, the chips overlap the search box.');
+  await a.getByRole('button', { name: 'Send report' }).click();
+  await a.getByText('Thanks! Your report was sent.').waitFor();
+  await a.locator('.item', { hasText: 'Filter chips overlap on small screens' }).waitFor();
+  ok(true, 'bug report sent and listed under Your reports');
+  await a.screenshot({ path: `${OUT}/b-bug.png`, fullPage: true });
+  await a.setViewportSize({ width: 390, height: 800 });
+  ok(await a.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'bug page fits a phone screen');
+  await a.screenshot({ path: `${OUT}/b-bug-phone.png` });
+  await a.setViewportSize({ width: 1360, height: 900 });
+
   // logout
   await a.locator('.wallet-chip').click();
   await a.getByRole('button', { name: 'Log out' }).click();

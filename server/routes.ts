@@ -21,6 +21,7 @@ import {
   requireEscrow,
   syncEscrow,
 } from './escrow';
+import { createBugReport, listBugReports, myBugReports, updateBugReport } from './bugs';
 
 type Ctx = { env: Env; request: Request; url: URL; params: string[]; user: User | null };
 type Handler = (c: Ctx) => Promise<Response>;
@@ -704,6 +705,27 @@ const adminEscrows: Handler = async (c) => {
   return json({ escrows: await listEscrowsByState(c.env, c.url.searchParams.get('state') || 'disputed') });
 };
 
+// ---------- bug reports ----------
+
+const createBug: Handler = async (c) => {
+  const u = requireUser(c);
+  const id = await createBugReport(c.env, u, await readJson(c.request), c.request.headers.get('user-agent') || '');
+  return json({ id }, 201);
+};
+
+const myBugs: Handler = async (c) => json({ bugs: await myBugReports(c.env, requireUser(c)) });
+
+const adminBugs: Handler = async (c) => {
+  requireAdmin(c);
+  return json({ bugs: await listBugReports(c.env, c.url.searchParams.get('status') || 'new') });
+};
+
+const adminUpdateBug: Handler = async (c) => {
+  requireAdmin(c);
+  await updateBugReport(c.env, id(c.params[0]), await readJson(c.request));
+  return json({ ok: true });
+};
+
 // ---------- router ----------
 
 const routes: [string, RegExp, Handler][] = [
@@ -747,6 +769,10 @@ const routes: [string, RegExp, Handler][] = [
   ['POST', /^\/api\/escrows\/sync$/, syncEscrowHandler],
   ['GET', /^\/api\/me\/escrows$/, myEscrows],
   ['GET', /^\/api\/admin\/escrows$/, adminEscrows],
+  ['POST', /^\/api\/bugs$/, createBug],
+  ['GET', /^\/api\/me\/bugs$/, myBugs],
+  ['GET', /^\/api\/admin\/bugs$/, adminBugs],
+  ['POST', /^\/api\/admin\/bugs\/(\d+)$/, adminUpdateBug],
 ];
 
 export async function handle(request: Request, env: Env): Promise<Response> {

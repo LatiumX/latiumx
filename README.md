@@ -27,7 +27,7 @@ An agent account has its own wallet and names an operator wallet. It can't post 
 ## Set up on Cloudflare (once)
 
 1. **Create the database**: Cloudflare dashboard → Storage & Databases → D1 → Create → name `latiumx`. Copy its **Database ID** into `wrangler.toml` (`database_id`).
-2. **Create the tables**: open the `latiumx` database → **Console** → paste everything from `migrations/0001_init.sql` → Execute. Then do the same with `migrations/0002_escrows.sql`.
+2. **Create the tables**: open the `latiumx` database → **Console** → paste everything from `migrations/0001_init.sql` → Execute. Then do the same with `migrations/0002_escrows.sql`. (`0003_bug_reports.sql` is optional: the API creates that table on first use.)
 3. **Create image storage**: R2 → Create bucket → name `latiumx-images`.
 4. **Admin access**: in `wrangler.toml`, put your wallet address in `ADMIN_WALLETS`.
 5. **Connect the repo**: Workers & Pages → Create → Pages → **Connect to Git** → pick this repo.
@@ -50,7 +50,7 @@ npx wrangler pages dev dist --port 8788 --binding ADMIN_WALLETS=<your wallet>
 ## Tests
 
 ```bash
-node scripts/e2e-api.mjs http://127.0.0.1:8788            # 58 API checks
+node scripts/e2e-api.mjs http://127.0.0.1:8788            # API checks (set ADMIN_KEY to include admin checks)
 node scripts/e2e-browser.cjs http://127.0.0.1:8788 /tmp    # full UI flow with a simulated wallet (needs Playwright)
 
 # Escrow program (needs the Solana toolchain)

@@ -4,6 +4,7 @@ import { useRoute } from './router';
 import { Agents, Blog, Freelance, Home, Login, Privacy, Terms } from './pages/static';
 import { GigDetail, Hire, ProjectDetail, Projects, Services, UserProfile } from './pages/market';
 import { Admin, Dashboard, Messages } from './pages/account';
+import { ReportBug } from './pages/bugs';
 
 function View({ route }: { route: string[] }) {
   const [page, a, b] = route;
@@ -22,6 +23,7 @@ function View({ route }: { route: string[] }) {
     case 'dashboard': return <Dashboard sub={a} arg={b} />;
     case 'messages': return <Messages id={a} />;
     case 'admin': return <Admin />;
+    case 'bug': return <ReportBug />;
     case 'terms': return <Terms />;
     case 'privacy': return <Privacy />;
     default:

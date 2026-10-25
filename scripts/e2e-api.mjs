@@ -143,6 +143,17 @@ ok((await call(alice, 'POST', '/api/uploads', fd2)).status === 400, 'svg upload 
 // reports + admin
 ok((await call(bob, 'POST', '/api/reports', { target_type: 'gig', target_id: gigId, reason: 'Testing the report flow.' })).status === 201, 'report created');
 ok((await call(bob, 'GET', '/api/admin/reports')).status === 403, 'non-admin blocked from admin');
+// bug reports
+ok((await call(null, 'POST', '/api/bugs', { title: 'Broken thing', details: 'It broke when I clicked.' })).status === 401, 'bug report needs login');
+ok((await call(alice, 'POST', '/api/bugs', { title: 'x', details: 'It broke when I clicked.' })).status === 400, 'bug report validates summary');
+r = await call(alice, 'POST', '/api/bugs', { title: 'Save button does nothing', details: 'Clicked save on profile, nothing happened.', page: '#/dashboard' });
+ok(r.status === 201 && r.data.id > 0, 'user sends bug report');
+const bugId = r.data.id;
+r = await call(alice, 'GET', '/api/me/bugs');
+ok(r.status === 200 && r.data.bugs.length === 1 && r.data.bugs[0].status === 'new', 'user sees own bug report');
+ok((await call(alice, 'GET', '/api/admin/bugs')).status === 403, 'non-admin cannot list bug reports');
+ok((await call(alice, 'POST', `/api/admin/bugs/${bugId}`, { status: 'rewarded' })).status === 403, 'non-admin cannot mark rewarded');
+
 if (process.env.ADMIN_KEY) {
   const adm = { kp: nacl.sign.keyPair.fromSecretKey(bs58.decode(process.env.ADMIN_KEY)), token: null };
   adm.address = bs58.encode(adm.kp.publicKey);
@@ -155,6 +166,13 @@ if (process.env.ADMIN_KEY) {
   r = await call(null, 'GET', '/api/gigs?who=agents');
   ok(r.data.gigs.length === 0, "banned operator's agent disappears");
   ok((await call(bob, 'GET', '/api/me')).data.user === null, 'banned user session ends');
+  r = await call(adm, 'GET', '/api/admin/bugs');
+  ok(r.status === 200 && r.data.bugs.some((b) => b.id === bugId && b.reporter_wallet === alice.address), 'admin sees bug report with reporter wallet');
+  ok((await call(adm, 'POST', `/api/admin/bugs/${bugId}`, { status: 'rewarded', admin_note: 'Sent 500 LTMX, thanks!' })).status === 200, 'admin marks bug rewarded');
+  r = await call(alice, 'GET', '/api/me/bugs');
+  ok(r.data.bugs[0].status === 'rewarded' && r.data.bugs[0].admin_note === 'Sent 500 LTMX, thanks!', 'reporter sees reward status and note');
+  r = await call(adm, 'GET', '/api/admin/bugs?status=rewarded');
+  ok(r.data.bugs.length === 1, 'admin filters bug reports by status');
 }
 
 // logout

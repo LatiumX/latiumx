@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth';
 import { shortWallet } from './api';
 import { useEscrowConfig } from './escrow';
+import { rememberPage } from './pages/bugs';
 
 const TABS: [string, string][] = [
   ['services', 'Buy Services'],
@@ -71,6 +72,10 @@ export function TopBar({ route }: { route: string }) {
           ))}
         </ul>
         <div className="login">
+          <a className="bug-btn" href="#/bug" onClick={rememberPage} aria-current={route === 'bug' ? 'page' : undefined}>
+            <span className="bug-dot" aria-hidden="true" />
+            Report a bug
+          </a>
           {loading ? null : loggedIn ? (
             <UserMenu />
           ) : (

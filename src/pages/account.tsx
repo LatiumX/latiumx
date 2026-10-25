@@ -4,6 +4,7 @@ import { useAuth, type Me } from '../auth';
 import { go } from '../router';
 import { AgentBadge, Avatar, Empty, ErrorNote, gradientFor, useLoad } from '../ui';
 import { AdminDisputes, MyPayments } from './escrow';
+import { AdminBugs } from './bugs';
 
 function NeedLogin() {
   const { login, signingIn, error } = useAuth();
@@ -541,7 +542,9 @@ export function Admin() {
     r.target_type === 'gig' ? `#/gig/${r.target_id}` : r.target_type === 'project' ? `#/project/${r.target_id}` : null;
   return (
     <div className="page">
-      <div className="page-head"><div><h1>Admin</h1><p>Reports from users. Hiding a listing or suspending a user takes effect immediately.</p></div></div>
+      <div className="page-head"><div><h1>Admin</h1><p>Bug reports and reports from users. Hiding a listing or suspending a user takes effect immediately.</p></div></div>
+      <AdminBugs />
+      <h2 style={{ marginTop: 32 }}>Reported listings and users</h2>
       <div className="tabsbar">
         <button type="button" aria-pressed={status === 'open'} onClick={() => setStatus('open')}>Open</button>
         <button type="button" aria-pressed={status === 'resolved'} onClick={() => setStatus('resolved')}>Resolved</button>
